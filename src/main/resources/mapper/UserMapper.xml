@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.campusshare.mapper.UserMapper">
+
+    <!-- 查询单个用户（不含密码），用于返回给前端 -->
+    <select id="selectById" resultType="User">
+        SELECT id, username, nickname, avatar, phone, role, status, create_time, update_time
+        FROM `user`
+        WHERE id = #{id}
+    </select>
+
+    <!-- 按用户名查询（含密码），仅用于登录时校验密码，绝不能返回给前端 -->
+    <select id="selectByUsername" resultType="User">
+        SELECT id, username, password, nickname, avatar, phone, role, status, create_time, update_time
+        FROM `user`
+        WHERE username = #{username}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `user` (username, password, nickname, avatar, phone, role, status, create_time, update_time)
+        VALUES (#{username}, #{password}, #{nickname}, #{avatar}, #{phone}, #{role}, #{status}, #{createTime}, #{updateTime})
+    </insert>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
+        FROM `user`
+    </select>
+
+    <select id="selectPage" resultType="User">
+        SELECT id, username, nickname, avatar, phone, role, status, create_time, update_time
+        FROM `user`
+        ORDER BY id
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 动态更新：只更新非空字段，未传的字段保持原值 -->
+    <update id="updateProfile">
+        UPDATE `user`
+        <set>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE `user`
+        SET password = #{password}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE `user`
+        SET status = #{status}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

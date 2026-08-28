@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.campusshare.mapper.SystemConfigMapper">
+
+    <select id="selectByKey" resultType="SystemConfig">
+        SELECT id, config_key, config_value, description, update_time
+        FROM `system_config`
+        WHERE config_key = #{configKey}
+    </select>
+
+</mapper>

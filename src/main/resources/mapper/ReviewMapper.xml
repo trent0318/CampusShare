@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.campusshare.mapper.ReviewMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `review` (user_id, resource_id, reservation_id, rating, content, create_time, update_time)
+        VALUES (#{userId}, #{resourceId}, #{reservationId}, #{rating}, #{content}, NOW(), NOW())
+    </insert>
+
+    <!-- 按预约查评价：用于"一个预约只能评一次"的判断（另有 uk_reservation 唯一约束兜底） -->
+    <select id="selectByReservationId" resultType="Review">
+        SELECT id, user_id, resource_id, reservation_id, rating, content, create_time, update_time
+        FROM `review`
+        WHERE reservation_id = #{reservationId}
+    </select>
+
+    <!-- 某资源的评价列表，带 username / resourceName -->
+    <select id="selectPageByResource" resultType="Review">
+        SELECT rv.id, rv.user_id, rv.resource_id, rv.reservation_id, rv.rating, rv.content,
+               rv.create_time, rv.update_time,
+               u.username AS username,
+               r.name AS resource_name
+        FROM `review` rv
+        LEFT JOIN `user` u ON rv.user_id = u.id
+        LEFT JOIN `resource` r ON rv.resource_id = r.id
+        WHERE rv.resource_id = #{resourceId}
+        ORDER BY rv.id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countByResource" resultType="long">
+        SELECT COUNT(*)
+        FROM `review`
+        WHERE resource_id = #{resourceId}
+    </select>
+
+</mapper>

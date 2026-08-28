@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.campusshare.mapper.ResourceMapper">
+
+    <!-- 查询单个资源（含分类名），LEFT JOIN 保证分类被删后资源仍能查到 -->
+    <select id="selectById" resultType="Resource">
+        SELECT r.id, r.name, r.category_id, r.type, r.description, r.image, r.location,
+               r.total_count, r.status, r.audit_reason, r.create_time, r.update_time,
+               c.name AS category_name
+        FROM `resource` r
+        LEFT JOIN `category` c ON r.category_id = c.id
+        WHERE r.id = #{id}
+    </select>
+
+    <!-- 行锁：事务中锁定资源行，串行化同一资源的并发预约 -->
+    <select id="selectByIdForUpdate" resultType="Resource">
+        SELECT id, name, category_id, type, description, image, location, total_count, status, audit_reason, create_time, update_time
+        FROM `resource`
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
+    <!-- 分页条件查询（分类/类型/关键词/状态），动态 SQL -->
+    <select id="selectPage" resultType="Resource">
+        SELECT r.id, r.name, r.category_id, r.type, r.description, r.image, r.location,
+               r.total_count, r.status, r.audit_reason, r.create_time, r.update_time,
+               c.name AS category_name
+        FROM `resource` r
+        LEFT JOIN `category` c ON r.category_id = c.id
+        <where>
+            <if test="categoryId != null">
+                AND r.category_id = #{categoryId}
+            </if>
+            <if test="type != null and type != ''">
+                AND r.type = #{type}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (r.name LIKE CONCAT('%', #{keyword}, '%') OR r.description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null">
+                AND r.status = #{status}
+            </if>
+        </where>
+        ORDER BY r.id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM `resource` r
+        <where>
+            <if test="categoryId != null">
+                AND r.category_id = #{categoryId}
+            </if>
+            <if test="type != null and type != ''">
+                AND r.type = #{type}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (r.name LIKE CONCAT('%', #{keyword}, '%') OR r.description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null">
+                AND r.status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `resource` (name, category_id, type, description, image, location, total_count, status, create_time, update_time)
+        VALUES (#{name}, #{categoryId}, #{type}, #{description}, #{image}, #{location}, #{totalCount}, #{status}, NOW(), NOW())
+    </insert>
+
+    <!-- 动态更新：只更新非空字段 -->
+    <update id="update">
+        UPDATE `resource`
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="image != null">image = #{image},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="totalCount != null">total_count = #{totalCount},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM `resource`
+        WHERE id = #{id}
+    </delete>
+
+    <select id="countByCategoryId" resultType="long">
+        SELECT COUNT(*)
+        FROM `resource`
+        WHERE category_id = #{categoryId}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE `resource`
+        SET status = #{status},
+            audit_reason = #{auditReason},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: campus-share
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/campusshare?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ${DB_PASSWORD:123456}
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${REDIS_PASSWORD:123456}
+      database: 0
+      timeout: 3s
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.campusshare.entity
+  configuration:
+    # 数据库下划线命名自动映射到 Java 驼峰命名（create_time -> createTime）
+    map-underscore-to-camel-case: true
+
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+jwt:
+  # 生产环境必须通过环境变量 JWT_SECRET 注入强随机密钥（如 openssl rand -base64 48）
+  secret: ${JWT_SECRET:campus-share-dev-only-secret-key-not-for-production}
+  expire-hours: 24
+
+logging:
+  level:
+    com.campusshare: debug

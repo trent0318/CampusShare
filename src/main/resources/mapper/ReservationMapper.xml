@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.campusshare.mapper.ReservationMapper">
+
+    <select id="selectById" resultType="Reservation">
+        SELECT rv.id, rv.user_id, rv.resource_id, rv.reserve_date, rv.start_time, rv.end_time,
+               rv.status, rv.checkin_time, rv.finish_time, rv.cancel_reason, rv.remark,
+               rv.create_time, rv.update_time,
+               r.name AS resource_name
+        FROM `reservation` rv
+        LEFT JOIN `resource` r ON rv.resource_id = r.id
+        WHERE rv.id = #{id}
+    </select>
+
+    <!-- 冲突检测：该资源在 [startTime, endTime) 内是否已有有效预约（CONFIRMED/IN_USE）。
+         区间重叠算法：s1 < e2 AND s2 < e1 -->
+    <select id="countConflict" resultType="int">
+        SELECT COUNT(*)
+        FROM `reservation`
+        WHERE resource_id = #{resourceId}
+          AND status IN ('CONFIRMED', 'IN_USE')
+          AND start_time &lt; #{endTime}
+          AND end_time &gt; #{startTime}
+    </select>
+
+    <select id="countActiveByUser" resultType="int">
+        SELECT COUNT(*)
+        FROM `reservation`
+        WHERE user_id = #{userId}
+          AND status IN ('CONFIRMED', 'IN_USE')
+    </select>
+
+    <select id="selectMine" resultType="Reservation">
+        SELECT rv.id, rv.user_id, rv.resource_id, rv.reserve_date, rv.start_time, rv.end_time,
+               rv.status, rv.checkin_time, rv.finish_time, rv.cancel_reason, rv.remark,
+               rv.create_time, rv.update_time,
+               r.name AS resource_name
+        FROM `reservation` rv
+        LEFT JOIN `resource` r ON rv.resource_id = r.id
+        <where>
+            rv.user_id = #{userId}
+            <if test="status != null and status != ''">
+                AND rv.status = #{status}
+            </if>
+        </where>
+        ORDER BY rv.id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countMine" resultType="long">
+        SELECT COUNT(*)
+        FROM `reservation`
+        <where>
+            user_id = #{userId}
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultType="Reservation">
+        SELECT rv.id, rv.user_id, rv.resource_id, rv.reserve_date, rv.start_time, rv.end_time,
+               rv.status, rv.checkin_time, rv.finish_time, rv.cancel_reason, rv.remark,
+               rv.create_time, rv.update_time,
+               r.name AS resource_name,
+               u.username AS username
+        FROM `reservation` rv
+        LEFT JOIN `resource` r ON rv.resource_id = r.id
+        LEFT JOIN `user` u ON rv.user_id = u.id
+        <where>
+            <if test="userId != null">AND rv.user_id = #{userId}</if>
+            <if test="resourceId != null">AND rv.resource_id = #{resourceId}</if>
+            <if test="status != null and status != ''">AND rv.status = #{status}</if>
+        </where>
+        ORDER BY rv.id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM `reservation` rv
+        <where>
+            <if test="userId != null">AND rv.user_id = #{userId}</if>
+            <if test="resourceId != null">AND rv.resource_id = #{resourceId}</if>
+            <if test="status != null and status != ''">AND rv.status = #{status}</if>
+        </where>
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `reservation` (user_id, resource_id, reserve_date, start_time, end_time, status, remark, create_time, update_time)
+        VALUES (#{userId}, #{resourceId}, #{reserveDate}, #{startTime}, #{endTime}, #{status}, #{remark}, NOW(), NOW())
+    </insert>
+
+    <!-- 状态流转：签到/完成/取消共用，按需更新对应时间字段 -->
+    <update id="updateStatus">
+        UPDATE `reservation`
+        <set>
+            status = #{status},
+            <if test="checkinTime != null">checkin_time = #{checkinTime},</if>
+            <if test="finishTime != null">finish_time = #{finishTime},</if>
+            <if test="cancelReason != null">cancel_reason = #{cancelReason},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 定时任务：查超时未签到（CONFIRMED 且开始时间早于 deadline）的预约 -->
+    <select id="selectExpiredCandidates" resultType="Reservation">
+        SELECT id, resource_id, start_time, end_time
+        FROM `reservation`
+        WHERE status = 'CONFIRMED'
+          AND start_time &lt; #{deadline}
+    </select>
+
+    <!-- 定时任务：查已到结束时间（IN_USE 且结束时间早于 now）的预约 -->
+    <select id="selectFinishedCandidates" resultType="Reservation">
+        SELECT id, resource_id, start_time, end_time
+        FROM `reservation`
+        WHERE status = 'IN_USE'
+          AND end_time &lt; #{now}
+    </select>
+
+    <!-- 定时任务：CONFIRMED → EXPIRED，WHERE 带状态条件保证重复执行也幂等 -->
+    <update id="expireById">
+        UPDATE `reservation`
+        SET status = 'EXPIRED', update_time = NOW()
+        WHERE id = #{id} AND status = 'CONFIRMED'
+    </update>
+
+    <!-- 定时任务：IN_USE → COMPLETED，WHERE 带状态条件保证重复执行也幂等 -->
+    <update id="completeById">
+        UPDATE `reservation`
+        SET status = 'COMPLETED', finish_time = NOW(), update_time = NOW()
+        WHERE id = #{id} AND status = 'IN_USE'
+    </update>
+
+</mapper>
