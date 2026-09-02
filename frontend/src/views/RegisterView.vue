@@ -38,6 +38,7 @@ async function submit() {
 <template>
   <div class="auth-card">
     <h1>CampusShare 注册</h1>
+    <p class="auth-sub">创建一个账号，开始预约</p>
     <form @submit.prevent="submit">
       <label>用户名（3~50 字符）</label>
       <input v-model="form.username" autocomplete="username" />
@@ -49,7 +50,7 @@ async function submit() {
       <input v-model="form.nickname" />
       <label>手机号（可选）</label>
       <input v-model="form.phone" />
-      <button class="primary" type="submit" :disabled="loading" style="margin-top:16px;width:100%">
+      <button class="primary btn-block" type="submit" :disabled="loading">
         {{ loading ? '注册中...' : '注册' }}
       </button>
     </form>

@@ -32,12 +32,13 @@ async function submit() {
 <template>
   <div class="auth-card">
     <h1>CampusShare 登录</h1>
+    <p class="auth-sub">欢迎回来，请登录</p>
     <form @submit.prevent="submit">
       <label>用户名</label>
       <input v-model="form.username" autocomplete="username" />
       <label>密码</label>
       <input v-model="form.password" type="password" autocomplete="current-password" />
-      <button class="primary" type="submit" :disabled="loading" style="margin-top:16px;width:100%">
+      <button class="primary btn-block" type="submit" :disabled="loading">
         {{ loading ? '登录中...' : '登录' }}
       </button>
     </form>
